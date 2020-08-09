@@ -14,9 +14,13 @@ Based on Loot Table format: https://minecraft.gamepedia.com/Loot_table
 ## Usage
 
 ```js
-const template = require("prismarine-template");
+const getPotentialDrops = require("prismarine-loottable").getPotentialDrops;
+const lootTable = require('./path/to/table.json')
 
-template.helloWorld();
+const drops = getPotentialDrops(lootTable)
+
+const itemType = drops[0].itemType
+const silkTouch = drops[0].conditions[0].isSilkTouch()
 ```
 
 ## API
