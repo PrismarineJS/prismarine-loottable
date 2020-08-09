@@ -4,7 +4,7 @@
   "description": "A small utility package to help in parsing Minecraft loot tables.",
   "main": "index.js",
   "scripts": {
-    "test": "jest --verbose",
+    "test": "echo 'No tests defined!'",
     "pretest": "npm run lint && require-self",
     "prepare": "npm install require-self && require-self",
     "lint": "standard",
@@ -28,7 +28,6 @@
   },
   "homepage": "https://github.com/PrismarineJS/prismarine-loottable#readme",
   "devDependencies": {
-    "jest": "^26.2.2",
     "require-self": "^0.2.3",
     "standard": "^14.3.4"
   },
