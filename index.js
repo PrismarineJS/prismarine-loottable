@@ -98,47 +98,63 @@ function parseCondition (condition) {
 
   switch (lootCondition.type) {
     case 'minecraft:alternative':
-      // TODO
+      lootCondition.terms = []
+      for (const term of condition.terms) { lootCondition.terms.push(parseCondition(term)) }
       break
 
     case 'minecraft:block_state_property':
-      // TODO
+      lootCondition.block = condition.block
+      lootCondition.properties = condition.properties
       break
 
     case 'minecraft:damage_source_properties':
-      // TODO
+      for (const prop in condition.predicate) {
+        lootCondition[prop] = condition.predicate[prop]
+      }
       break
 
     case 'minecraft:entity_properties':
-      // TODO
+      lootCondition.entity = condition.entity
+      for (const prop in condition.predicate) {
+        lootCondition[prop] = condition.predicate[prop]
+      }
       break
 
     case 'minecraft:entity_scores':
-      // TODO
+      lootCondition.entity = condition.entity
+      lootCondition.scores = condition.scores
       break
 
     case 'minecraft:inverted':
-      // TODO
+      lootCondition.term = parseCondition(condition.term)
       break
 
     case 'minecraft:killed_by_player':
-      // TODO
+      lootCondition.inverse = condition.inverse
       break
 
     case 'minecraft:location_check':
-      // TODO
+      lootCondition.offsetX = condition.offsetX
+      lootCondition.offsetY = condition.offsetY
+      lootCondition.offsetZ = condition.offsetZ
+      for (const prop in condition.predicate) {
+        lootCondition[prop] = condition.predicate[prop]
+      }
       break
 
     case 'minecraft:match_tool':
-      // TODO
+      for (const prop in condition.predicate) {
+        lootCondition[prop] = condition.predicate[prop]
+      }
       break
 
     case 'minecraft:random_chance':
-      // TODO
+      lootCondition.chance = condition.chance
       break
 
-    case 'minecraft:random_chance_width_looting':
-      // TODO
+    case 'minecraft:random_chance_with_looting':
+      lootCondition.chance = condition.chance
+      lootCondition.looting_multiplier = condition.looting_multiplier
       break
 
     case 'minecraft:reference':
@@ -146,19 +162,21 @@ function parseCondition (condition) {
       break
 
     case 'minecraft:survives_explosion':
-      // TODO
+      // Nothing to do
       break
 
     case 'minecraft:table_bonus':
-      // TODO
+      lootCondition.enchantment = condition.enchantment
+      lootCondition.chances = condition.chances
       break
 
     case 'minecraft:time_check':
-      // TODO
+      if (typeof condition.value === 'object') { lootCondition.value = [condition.value.min, condition.value.max] } else { lootCondition.value = [condition.value, condition.value] }
       break
 
     case 'minecraft:weather_check':
-      // TODO
+      lootCondition.raining = condition.raining
+      lootCondition.thundering = condition.thundering
       break
 
     default:
@@ -174,8 +192,13 @@ function handleItemEntry (drops, entry, pool) {
   if (entry.weight !== undefined) item.weight = entry.weight
   if (entry.quality !== undefined) item.quality = entry.quality
 
-  item.minCount = Array.isArray(pool.rolls) ? pool.rolls[0] : pool.rolls
-  item.maxCount = Array.isArray(pool.rolls) ? pool.rolls[1] : pool.rolls
+  if (typeof pool.rolls === 'object') {
+    item.minCount = pool.rolls.min
+    item.maxCount = pool.rolls.max
+  } else {
+    item.minCount = pool.rolls
+    item.maxCount = pool.rolls
+  }
 
   for (const func of entry.functions || []) {
     item.functions.push(parseFunction(func))
