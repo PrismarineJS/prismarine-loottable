@@ -305,6 +305,16 @@ class LootCondition {
   constructor (type) {
     this.type = type
   }
+
+  isSilkTouch () {
+    if (this.type === 'minecraft:match_tool' && this.enchantments) {
+      for (const enchantment of this.enchantments) {
+        if (enchantment === 'minecraft:silk_touch') return true
+      }
+    }
+
+    return false
+  }
 }
 
 class LootFunction {
