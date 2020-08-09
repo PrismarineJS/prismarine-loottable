@@ -3,23 +3,43 @@ function removeNamespace (value) {
   else return value
 }
 
+function applyFunctions (item, functions) {}
+
+function applyConditions (item, conditions) {}
+
+function parseLootTable (table) {
+  const type = removeNamespace(table.type)
+  const lootTable = new LootTable(type)
+
+  for (const pool of table.pools || []) {
+    for (const entry of table.entries || []) {
+      const item = new PotentialDrop(entry.type)
+      applyFunctions(item, pool.functions || [])
+      applyConditions(item, pool.conditions || [])
+      lootTable.items.push(item)
+    }
+  }
+
+  return lootTable
+}
+
+class PotentialDrop {
+  constructor (itemType) {
+    this.itemType = itemType
+    this.conditions = []
+  }
+}
+
 class LootTable {
   /**
    * Creates a new loot table parser from the given Minecraft loot table.
    *
-   * @param lootTable - The raw Minecraft loot table object.
+   * @param type - The type of table being represented.
    */
-  constructor (lootTable) {
-    this._lootTable = lootTable
-    this.type = removeNamespace(lootTable.type)
-  }
-
-  /**
-   * Gets the type of loot table this is.
-   */
-  get type () {
-    return this.type
+  constructor (type) {
+    this.type = type
+    this.items = []
   }
 }
 
-module.exports = { LootTable }
+module.exports = { parseLootTable, LootTable }

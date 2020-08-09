@@ -9,6 +9,8 @@
 
 A utility package for parsing Minecraft loot table files.
 
+Based on Loot Table format: https://minecraft.gamepedia.com/Loot_table
+
 ## Usage
 
 ```js
