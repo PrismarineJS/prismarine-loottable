@@ -99,84 +99,35 @@ function parseCondition (condition) {
   switch (lootCondition.type) {
     case 'minecraft:alternative':
       lootCondition.terms = []
-      for (const term of condition.terms) { lootCondition.terms.push(parseCondition(term)) }
-      break
-
-    case 'minecraft:block_state_property':
-      lootCondition.block = condition.block
-      lootCondition.properties = condition.properties
-      break
-
-    case 'minecraft:damage_source_properties':
-      for (const prop in condition.predicate) {
-        lootCondition[prop] = condition.predicate[prop]
+      for (const term of condition.terms) {
+        lootCondition.terms.push(parseCondition(term))
       }
-      break
-
-    case 'minecraft:entity_properties':
-      lootCondition.entity = condition.entity
-      for (const prop in condition.predicate) {
-        lootCondition[prop] = condition.predicate[prop]
-      }
-      break
-
-    case 'minecraft:entity_scores':
-      lootCondition.entity = condition.entity
-      lootCondition.scores = condition.scores
       break
 
     case 'minecraft:inverted':
       lootCondition.term = parseCondition(condition.term)
       break
 
-    case 'minecraft:killed_by_player':
-      lootCondition.inverse = condition.inverse
-      break
-
-    case 'minecraft:location_check':
-      lootCondition.offsetX = condition.offsetX
-      lootCondition.offsetY = condition.offsetY
-      lootCondition.offsetZ = condition.offsetZ
-      for (const prop in condition.predicate) {
-        lootCondition[prop] = condition.predicate[prop]
-      }
-      break
-
-    case 'minecraft:match_tool':
-      for (const prop in condition.predicate) {
-        lootCondition[prop] = condition.predicate[prop]
-      }
-      break
-
-    case 'minecraft:random_chance':
-      lootCondition.chance = condition.chance
-      break
-
-    case 'minecraft:random_chance_with_looting':
-      lootCondition.chance = condition.chance
-      lootCondition.looting_multiplier = condition.looting_multiplier
-      break
-
     case 'minecraft:reference':
       // TODO
       break
 
+    case 'minecraft:block_state_property':
+    case 'minecraft:damage_source_properties':
+    case 'minecraft:entity_properties':
+    case 'minecraft:entity_scores':
+    case 'minecraft:killed_by_player':
+    case 'minecraft:location_check':
+    case 'minecraft:match_tool':
+    case 'minecraft:random_chance':
+    case 'minecraft:random_chance_with_looting':
     case 'minecraft:survives_explosion':
-      // Nothing to do
-      break
-
     case 'minecraft:table_bonus':
-      lootCondition.enchantment = condition.enchantment
-      lootCondition.chances = condition.chances
-      break
-
     case 'minecraft:time_check':
-      if (typeof condition.value === 'object') { lootCondition.value = [condition.value.min, condition.value.max] } else { lootCondition.value = [condition.value, condition.value] }
-      break
-
     case 'minecraft:weather_check':
-      lootCondition.raining = condition.raining
-      lootCondition.thundering = condition.thundering
+      for (const prop in condition) {
+        lootCondition[prop] = condition[prop]
+      }
       break
 
     default:
@@ -307,8 +258,10 @@ class LootCondition {
   }
 
   isSilkTouch () {
-    if (this.type === 'minecraft:match_tool' && this.enchantments) {
-      for (const enchantment of this.enchantments) {
+    if (this.type === 'minecraft:match_tool' &&
+        this.predicate &&
+        this.predicate.enchantments) {
+      for (const enchantment of this.predicate.enchantments) {
         if (enchantment === 'minecraft:silk_touch') return true
       }
     }
