@@ -58,6 +58,9 @@ This object is the main object returned from the `getPotentialDrops` function. I
 * `lootItemDrop.quality: number`
 <br/> The bonus weight to add for each point of luck being used. The new weight value is calculated via the formula: `floor(weight + (quality * generic.luck))` More information can be found on the Minecraft wiki page.
 
+* `lootItemDrop.dropChance: number`
+<br/> The estimated chance of this item being dropped, assuming all conditions for all entries are met and the luck enchantment is not being used.
+
 _**LootFunction**_
 
 Contains information about a function to be applied to an item drop. The properties within this class match the properties of the given type as defined within the Minecraft Loot Table format.

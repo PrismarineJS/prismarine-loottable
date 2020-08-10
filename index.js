@@ -163,8 +163,19 @@ function getPotentialDrops (lootTable, mcVersion) {
   const drops = []
 
   for (const pool of lootTable.pools || []) {
+    const firstIndex = drops.length
+    
     for (const entry of pool.entries || []) {
       handleEntry(drops, entry, pool)
+    }
+
+    let maxWeight = 0
+    for (let i = firstIndex; i < drops.length; i++) {
+      maxWeight += drops[i].weight
+    }
+
+    for (let i = firstIndex; i < drops.length; i++) {
+      drops[i].dropChance = drops[i].weight / maxWeight
     }
   }
 
@@ -194,6 +205,7 @@ class LootItemDrop {
     this.conditions = []
     this.weight = 1.0
     this.quality = 1.0
+    this.dropChance = 1.0
   }
 }
 
