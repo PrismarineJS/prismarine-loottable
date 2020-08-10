@@ -3,87 +3,29 @@ function parseFunction (func) {
 
   switch (lootFunction.type) {
     case 'minecraft:apply_bonus':
-      // TODO
-      break
-
     case 'minecraft:copy_name':
-      // TODO
-      break
-
     case 'minecraft:copy_nbt':
-      // TODO
-      break
-
     case 'minecraft:copy_state':
-      // TODO
-      break
-
     case 'minecraft:enchant_randomly':
-      // TODO
-      break
-
     case 'minecraft:enchant_with_levels':
-      // TODO
-      break
-
     case 'minecraft:exploration_map':
-      // TODO
-      break
-
     case 'minecraft:explosion_decay':
-      // TODO
-      break
-
     case 'minecraft:furnace_smelt':
-      // TODO
-      break
-
     case 'minecraft:fill_player_head':
-      // TODO
-      break
-
     case 'minecraft:limit_count':
-      // TODO
-      break
-
     case 'minecraft:looting_enchant':
-      // TODO
-      break
-
     case 'minecraft:set_attributes':
-      // TODO
-      break
-
     case 'minecraft:set_contents':
-      // TODO
-      break
-
     case 'minecraft:set_count':
-      // TODO
-      break
-
     case 'minecraft:set_damage':
-      // TODO
-      break
-
     case 'minecraft:set_loot_table':
-      // TODO
-      break
-
     case 'minecraft:set_lore':
-      // TODO
-      break
-
     case 'minecraft:set_name':
-      // TODO
-      break
-
     case 'minecraft:set_nbt':
-      // TODO
-      break
-
     case 'minecraft:set_stew_effect':
-      // TODO
+      for (const prop in func) {
+        lootFunction[prop] = func[prop]
+      }
       break
 
     default:
@@ -152,8 +94,7 @@ function handleItemEntry (drops, entry, pool) {
   }
 
   // Since other entries exist in this pool, entries may not be selected.
-  if (pool.entries.length > 1)
-    item.minCount = 0
+  if (pool.entries.length > 1) { item.minCount = 0 }
 
   for (const func of entry.functions || []) {
     item.functions.push(parseFunction(func))
@@ -262,12 +203,11 @@ class LootCondition {
   }
 
   isSilkTouch () {
-    if (this.type === 'minecraft:match_tool' &&
-        this.predicate &&
-        this.predicate.enchantments) {
-      for (const enchantment of this.predicate.enchantments) {
-        if (enchantment === 'minecraft:silk_touch') return true
-      }
+    if (this.type !== 'minecraft:match_tool') return false
+    if (!this.predicate || !this.predicate.enchantments) return false
+
+    for (const enchantment of this.predicate.enchantments) {
+      if (enchantment === 'minecraft:silk_touch') return true
     }
 
     return false
