@@ -151,6 +151,10 @@ function handleItemEntry (drops, entry, pool) {
     item.maxCount = pool.rolls
   }
 
+  // Since other entries exist in this pool, entries may not be selected.
+  if (pool.entries.length > 1)
+    item.minCount = 0
+
   for (const func of entry.functions || []) {
     item.functions.push(parseFunction(func))
   }
