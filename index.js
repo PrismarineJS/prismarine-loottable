@@ -164,7 +164,7 @@ function getPotentialDrops (lootTable, mcVersion) {
 
   for (const pool of lootTable.pools || []) {
     const firstIndex = drops.length
-    
+
     for (const entry of pool.entries || []) {
       handleEntry(drops, entry, pool)
     }
