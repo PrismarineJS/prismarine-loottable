@@ -208,7 +208,7 @@ class LootItemDrop {
     this.dropChance = 1.0
   }
 
-  requiresSilkTouch() {
+  requiresSilkTouch () {
     for (const condition of this.conditions) {
       if (condition.isSilkTouch()) return true
     }
@@ -227,7 +227,7 @@ class LootCondition {
     if (!this.predicate || !this.predicate.enchantments) return false
 
     for (const enchantment of this.predicate.enchantments) {
-      if (enchantment === 'minecraft:silk_touch') return true
+      if (enchantment.enchantment === 'minecraft:silk_touch') return true
     }
 
     return false
