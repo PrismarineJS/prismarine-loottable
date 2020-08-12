@@ -20,7 +20,7 @@ const lootTable = require('./path/to/table.json')
 const drops = getPotentialDrops(lootTable)
 
 const itemType = drops[0].itemType
-const silkTouch = drops[0].conditions[0].isSilkTouch()
+const silkTouch = drops[0].requiresSilkTouch()
 ```
 
 ## API
@@ -60,6 +60,9 @@ This object is the main object returned from the `getPotentialDrops` function. I
 
 * `lootItemDrop.dropChance: number`
 <br/> The estimated chance of this item being dropped, assuming all conditions for all entries are met and the luck enchantment is not being used.
+
+* `lootItemDrop.requiresSilkTouch(): boolean`
+<br/> Checks if any of the drop conditions is a silk touch requirement.
 
 _**LootFunction**_
 

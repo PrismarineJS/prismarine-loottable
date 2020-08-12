@@ -207,6 +207,14 @@ class LootItemDrop {
     this.quality = 1.0
     this.dropChance = 1.0
   }
+
+  requiresSilkTouch() {
+    for (const condition of this.conditions) {
+      if (condition.isSilkTouch()) return true
+    }
+
+    return false
+  }
 }
 
 class LootCondition {
