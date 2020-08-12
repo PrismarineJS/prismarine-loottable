@@ -1,5 +1,5 @@
-function parseFunction (func) {
-  const lootFunction = new LootFunction(func.function)
+function parseFunction (func, onPool) {
+  const lootFunction = new LootFunction(func.function, onPool)
 
   switch (lootFunction.type) {
     case 'minecraft:apply_bonus':
@@ -35,8 +35,8 @@ function parseFunction (func) {
   return lootFunction
 }
 
-function parseCondition (condition) {
-  const lootCondition = new LootCondition(condition.condition)
+function parseCondition (condition, onPool) {
+  const lootCondition = new LootCondition(condition.condition, onPool)
 
   switch (lootCondition.type) {
     case 'minecraft:alternative':
@@ -79,7 +79,7 @@ function parseCondition (condition) {
   return lootCondition
 }
 
-function handleItemEntry (drops, entry, pool) {
+function handleItemEntry (drops, entry, pool, poolIndex) {
   const item = new LootItemDrop(entry.name)
 
   if (entry.weight !== undefined) item.weight = entry.weight
@@ -93,32 +93,34 @@ function handleItemEntry (drops, entry, pool) {
     item.maxCount = pool.rolls
   }
 
+  item.poolIndex = poolIndex
+
   // Since other entries exist in this pool, entries may not be selected.
   if (pool.entries.length > 1) { item.minCount = 0 }
 
   for (const func of entry.functions || []) {
-    item.functions.push(parseFunction(func))
+    item.functions.push(parseFunction(func, false))
   }
 
   for (const func of pool.functions || []) {
-    item.functions.push(parseFunction(func))
+    item.functions.push(parseFunction(func, true))
   }
 
   for (const condition of entry.conditions || []) {
-    item.conditions.push(parseCondition(condition))
+    item.conditions.push(parseCondition(condition, false))
   }
 
   for (const condition of pool.conditions || []) {
-    item.conditions.push(parseCondition(condition))
+    item.conditions.push(parseCondition(condition, true))
   }
 
   drops.push(item)
 }
 
-function handleEntry (drops, entry, pool) {
+function handleEntry (drops, entry, pool, poolIndex) {
   switch (entry.type) {
     case 'minecraft:item':
-      handleItemEntry(drops, entry, pool)
+      handleItemEntry(drops, entry, pool, poolIndex)
       break
 
     case 'minecraft:tag':
@@ -135,7 +137,7 @@ function handleEntry (drops, entry, pool) {
     case 'minecraft:alternatives':
     case 'minecraft:sequence':
       for (const e of entry.children) {
-        handleEntry(drops, e, pool)
+        handleEntry(drops, e, pool, poolIndex)
       }
       break
 
@@ -162,20 +164,21 @@ function handleEntry (drops, entry, pool) {
 function getPotentialDrops (lootTable, mcVersion) {
   const drops = []
 
+  let poolIndex = -1
   for (const pool of lootTable.pools || []) {
     const firstIndex = drops.length
+    poolIndex++
 
     for (const entry of pool.entries || []) {
-      handleEntry(drops, entry, pool)
+      handleEntry(drops, entry, pool, poolIndex)
     }
 
-    let maxWeight = 0
+    // Add sibling weights
     for (let i = firstIndex; i < drops.length; i++) {
-      maxWeight += drops[i].weight
-    }
-
-    for (let i = firstIndex; i < drops.length; i++) {
-      drops[i].dropChance = drops[i].weight / maxWeight
+      for (let j = firstIndex; j < drops.length; j++) {
+        if (j === i) continue
+        drops[i].siblingWeights.push([drops[j].weight, drops[j].quality])
+      }
     }
   }
 
@@ -205,7 +208,8 @@ class LootItemDrop {
     this.conditions = []
     this.weight = 1.0
     this.quality = 1.0
-    this.dropChance = 1.0
+    this.poolIndex = 0
+    this.siblingWeights = []
   }
 
   requiresSilkTouch () {
@@ -215,11 +219,37 @@ class LootItemDrop {
 
     return false
   }
+
+  estimateDropChance (looting = 0, luck = 0) {
+    let myWeight = Math.floor(this.weight + (this.quality * luck))
+
+    let maxWeight = myWeight
+    for (const sib of this.siblingWeights) maxWeight += Math.floor(sib[0] + (sib[1] * luck))
+    
+    let individualChance = myWeight / maxWeight
+    let chance = 1
+
+    for (const condition of this.conditions) {
+      if (condition.type === 'minecraft:random_chance') {
+        chance *= condition.chance
+      }
+
+      if (condition.type === 'minecraft:random_chance_with_looting') {
+        let lootValue = looting
+        if (condition.onPool) lootValue /= individualChance
+
+        chance *= condition.chance + condition.looting_multiplier * lootValue
+      }
+    }
+
+    return chance * individualChance
+  }
 }
 
 class LootCondition {
-  constructor (type) {
+  constructor (type, onPool) {
     this.type = type
+    this.onPool = onPool
   }
 
   isSilkTouch () {
@@ -235,8 +265,9 @@ class LootCondition {
 }
 
 class LootFunction {
-  constructor (type) {
+  constructor (type, onPool) {
     this.type = type
+    this.onPool = onPool
   }
 }
 
