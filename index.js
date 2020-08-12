@@ -232,6 +232,16 @@ class LootItemDrop {
     return false
   }
 
+  requiresPlayerKill () {
+    for (const condition of this.conditions) {
+      if (condition.type === 'minecraft:killed_by_player') {
+        return !condition.inverse
+      }
+    }
+
+    return false
+  }
+
   estimateDropChance (looting = 0, luck = 0) {
     const myWeight = Math.floor(this.weight + (this.quality * luck))
 

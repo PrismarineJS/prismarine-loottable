@@ -73,6 +73,9 @@ This object is the main object returned from the `getPotentialDrops` function. I
 * `lootItemDrop.requiresNoSilkTouch(): boolean`
 <br/> Checks if the item drop requires the tool to not have silk touch.
 
+* `lootItemDrop.requiresPlayerKill(): boolean`
+<br/> Checks if the item drop requires the entity to be killed by a player directly.
+
 * `lootItemDrop.estimateDropChance(looting?: number, luck?: number): number`
 <br/> Estimates the drop chance of the item with the given luck potion effect, looting enchantment level and all relevant functions and conditions applied to the item drop. If the looting parameter is not defined, it is defaulted to 0. If the luck parameter is not defined, it is defaulted to 0.
 
