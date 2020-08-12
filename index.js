@@ -79,8 +79,8 @@ function parseCondition (condition, onPool) {
   return lootCondition
 }
 
-function handleItemEntry (drops, entry, pool, poolIndex) {
-  const item = new LootItemDrop(entry.name)
+function handleItemEntry (drops, entry, pool, poolIndex, entryType) {
+  const item = new LootItemDrop(entry.name, entryType)
 
   if (entry.weight !== undefined) item.weight = entry.weight
   if (entry.quality !== undefined) item.quality = entry.quality
@@ -94,6 +94,7 @@ function handleItemEntry (drops, entry, pool, poolIndex) {
   }
 
   item.poolIndex = poolIndex
+  item.entryType = entryType
 
   // Since other entries exist in this pool, entries may not be selected.
   if (pool.entries.length > 1) { item.minCount = 0 }
@@ -117,10 +118,11 @@ function handleItemEntry (drops, entry, pool, poolIndex) {
   drops.push(item)
 }
 
-function handleEntry (drops, entry, pool, poolIndex) {
+function handleEntry (drops, entry, pool, poolIndex, parentEntryType) {
   switch (entry.type) {
     case 'minecraft:item':
-      handleItemEntry(drops, entry, pool, poolIndex)
+      if (parentEntryType === undefined) parentEntryType = entry.type
+      handleItemEntry(drops, entry, pool, poolIndex, parentEntryType)
       break
 
     case 'minecraft:tag':
@@ -137,7 +139,7 @@ function handleEntry (drops, entry, pool, poolIndex) {
     case 'minecraft:alternatives':
     case 'minecraft:sequence':
       for (const e of entry.children) {
-        handleEntry(drops, e, pool, poolIndex)
+        handleEntry(drops, e, pool, poolIndex, entry.type)
       }
       break
 
@@ -173,11 +175,9 @@ function getPotentialDrops (lootTable, mcVersion) {
       handleEntry(drops, entry, pool, poolIndex)
     }
 
-    // Add sibling weights
     for (let i = firstIndex; i < drops.length; i++) {
       for (let j = firstIndex; j < drops.length; j++) {
-        if (j === i) continue
-        drops[i].siblingWeights.push([drops[j].weight, drops[j].quality])
+        drops[i].siblings.push(drops[j])
       }
     }
   }
@@ -209,7 +209,8 @@ class LootItemDrop {
     this.weight = 1.0
     this.quality = 1.0
     this.poolIndex = 0
-    this.siblingWeights = []
+    this.entryType = ''
+    this.siblings = []
   }
 
   requiresSilkTouch () {
@@ -220,13 +221,24 @@ class LootItemDrop {
     return false
   }
 
-  estimateDropChance (looting = 0, luck = 0) {
-    let myWeight = Math.floor(this.weight + (this.quality * luck))
+  requiresNoSilkTouch () {
+    if (this.entryType !== 'minecraft:alternatives') return false
 
-    let maxWeight = myWeight
-    for (const sib of this.siblingWeights) maxWeight += Math.floor(sib[0] + (sib[1] * luck))
-    
-    let individualChance = myWeight / maxWeight
+    const selfIndex = this.siblings.indexOf(this)
+    for (let i = 0; i < selfIndex; i++) {
+      if (this.siblings[i].requiresSilkTouch()) return true
+    }
+
+    return false
+  }
+
+  estimateDropChance (looting = 0, luck = 0) {
+    const myWeight = Math.floor(this.weight + (this.quality * luck))
+
+    let maxWeight = 0
+    for (const sib of this.siblings) maxWeight += Math.floor(sib.weight + (sib.quality * luck))
+
+    const individualChance = myWeight / maxWeight
     let chance = 1
 
     for (const condition of this.conditions) {

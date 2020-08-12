@@ -61,11 +61,17 @@ This object is the main object returned from the `getPotentialDrops` function. I
 * `lootItemDrop.poolIndex: number`
 <br/> The index of the loot table pool this item drop is located in.
 
-* `lootItemDrop.siblingWeights: [number, number][]`
-<br/> A list of tuples containing the weight and quality of all other drops located in the same pool as this item drop. The first value of the tuple is the item drop weight, and the second value is the item drop quality. The list does not contain this item.
+* `lootItemDrop.entryType: string`
+<br/> This value contains the entry type of the parent entry this item drop occurs from. For item drops not being nested, this is equal to `minecraft:item`. For item drops which are nested inside another entry, this value contains the parent entry's group type. `group`, `alternatives`, or `sequence`. This can be used to calculate more information about how item drops are calculated compared to the siblings
+
+* `lootItemDrop.sibling: LootItemDrop[]`
+<br/> A list of all other item drops that come from the same pool as this item drop. The list also contains this item.
 
 * `lootItemDrop.requiresSilkTouch(): boolean`
 <br/> Checks if any of the drop conditions is a silk touch requirement.
+
+* `lootItemDrop.requiresNoSilkTouch(): boolean`
+<br/> Checks if the item drop requires the tool to not have silk touch.
 
 * `lootItemDrop.estimateDropChance(looting?: number, luck?: number): number`
 <br/> Estimates the drop chance of the item with the given luck potion effect, looting enchantment level and all relevant functions and conditions applied to the item drop. If the looting parameter is not defined, it is defaulted to 0. If the luck parameter is not defined, it is defaulted to 0.
