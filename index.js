@@ -278,6 +278,68 @@ class LootItemDrop {
 
     return 0
   }
+
+  getStackSizeRange(fortune = 0, looting = 0) {
+    const count = [1, 1]
+
+    for (const func of this.functions) {
+        if (func.type === 'minecraft:apply_bonus') {
+            let level = 0
+
+            if (func.enchantment === 'minecraft:fortune') level = fortune
+            else if (func.enchantment === 'minecraft:looting') level = looting
+            else console.log(`Warning, unsupported enchantment '${func.enchantment}'`)
+
+            if (func.formula === 'minecraft:binomial_with_bonus_count') {
+                count[1] += func.parameters.extra + level
+            } else if (func.formula === 'minecraft:uniform_bonus_count') {
+                count[1] += func.parameters.bonusMultiplier * level
+            } else if (func.formula === 'minecraft:ore_drops') {
+                count[1] *= level + 2
+            } else console.log(`Warning, unsupported formula '${func.formula}'`)
+        }
+
+        if (func.type === 'minecraft:limit_count') {
+            if (typeof func.limit === 'number') {
+                count[0] = Math.min(count[0], func.limit)
+                count[1] = Math.min(count[1], func.limit)
+            } else {
+                count[0] = Math.min(count[0], func.limit.min)
+                count[1] = Math.min(count[1], func.limit.max)
+            }
+        }
+
+        if (func.type === 'minecraft:looting_enchant') {
+            if (typeof func.count === 'number') {
+                count[0] += func.count * looting
+                count[1] += func.count * looting
+            } else {
+                count[0] += func.count.min * looting
+                count[1] += func.count.max * looting
+            }
+
+            if (func.limit > 0) {
+                count[0] = Math.min(count[0], func.limit)
+                count[1] = Math.min(count[1], func.limit)
+            }
+        }
+
+        if (func.type === 'minecraft:set_count') {
+            if (typeof func.count === 'number') {
+                count[0] = func.count
+                count[1] = func.count
+            } else if (func.uniform) {
+                count[0] = func.uniform.min
+                count[1] = func.uniform.max
+            } else if (func.binomial) {
+                count[0] = 0
+                count[1] = func.binomial.n
+            }
+        }
+    }
+
+    return count
+  }
 }
 
 class LootCondition {

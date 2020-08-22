@@ -82,6 +82,9 @@ This object is the main object returned from the `getPotentialDrops` function. I
 * `lootItemDrop.getRequiredBlockAge(): number`
 <br/> Gets the required age of the block (for plant based blocks) in order for this item drop to occur.
 
+* `lootItemDrop.getStackSizeRange(fortune?: number, looting?: number): [number, number]`
+<br/> Gets the range of potential stack sizes for this item drop. This value may exceed the actual size of a Minecraft stack. If looting or fortune enchantments are used, the level can be specified to produce a more accurate range.
+
 _**LootFunction**_
 
 Contains information about a function to be applied to an item drop. The properties within this class match the properties of the given type as defined within the Minecraft Loot Table format.
