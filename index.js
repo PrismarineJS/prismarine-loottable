@@ -272,7 +272,7 @@ class LootItemDrop {
       if (condition.type === 'minecraft:block_state_property' &&
             condition.properties &&
             condition.properties.age) {
-        return condition.properties.age
+        return parseInt(condition.properties.age, 10)
       }
     }
 
