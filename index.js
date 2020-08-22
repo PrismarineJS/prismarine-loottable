@@ -266,6 +266,18 @@ class LootItemDrop {
 
     return chance * individualChance
   }
+
+  getRequiredBlockAge () {
+    for (const condition of this.conditions) {
+      if (condition.type === 'minecraft:block_state_property' &&
+            condition.properties &&
+            condition.properties.age) {
+        return condition.properties.age
+      }
+    }
+
+    return 0
+  }
 }
 
 class LootCondition {
