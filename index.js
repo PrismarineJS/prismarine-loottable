@@ -23,13 +23,13 @@ function parseFunction (func, onPool) {
     case 'minecraft:set_name':
     case 'minecraft:set_nbt':
     case 'minecraft:set_stew_effect':
+    default:
+      // every version adds functions (set_components, enchanted_count_increase, set_ominous_bottle_amplifier, ...);
+      // only the count-related ones below change what drops, so unknown ones are kept as data instead of failing
       for (const prop in func) {
         lootFunction[prop] = func[prop]
       }
       break
-
-    default:
-      throw new Error(`Unknown condition type ${lootFunction.type}!`)
   }
 
   return lootFunction
@@ -40,6 +40,8 @@ function parseCondition (condition, onPool) {
 
   switch (lootCondition.type) {
     case 'minecraft:alternative':
+    case 'minecraft:any_of': // 1.20.3+
+    case 'minecraft:all_of': // 1.20.3+
       lootCondition.terms = []
       for (const term of condition.terms) {
         lootCondition.terms.push(parseCondition(term))
@@ -67,13 +69,11 @@ function parseCondition (condition, onPool) {
     case 'minecraft:table_bonus':
     case 'minecraft:time_check':
     case 'minecraft:weather_check':
+    default: // enchantment_active_check (1.21) and whatever comes next: kept as data
       for (const prop in condition) {
         lootCondition[prop] = condition[prop]
       }
       break
-
-    default:
-      throw new Error(`Unknown condition type ${lootCondition.type}!`)
   }
 
   return lootCondition
@@ -86,8 +86,8 @@ function handleItemEntry (drops, entry, pool, poolIndex, entryType) {
   if (entry.quality !== undefined) item.quality = entry.quality
 
   if (typeof pool.rolls === 'object') {
-    item.minCount = pool.rolls.min
-    item.maxCount = pool.rolls.max
+    item.minCount = pool.rolls.min ?? pool.rolls.value ?? 1
+    item.maxCount = pool.rolls.max ?? pool.rolls.value ?? 1
   } else {
     item.minCount = pool.rolls
     item.maxCount = pool.rolls
@@ -262,6 +262,14 @@ class LootItemDrop {
 
         chance *= condition.chance + condition.looting_multiplier * lootValue
       }
+
+      if (condition.type === 'minecraft:random_chance_with_enchanted_bonus') { // 1.21+: replaces random_chance_with_looting
+        const base = typeof condition.unenchanted_chance === 'number' ? condition.unenchanted_chance : 1
+        const bonus = condition.enchanted_chance
+        let value = base
+        if (looting > 0 && bonus && typeof bonus === 'object' && bonus.type === 'minecraft:linear') value = (bonus.base ?? base) + (bonus.per_level_above_first ?? 0) * (looting - 1)
+        chance *= value
+      }
     }
 
     return chance * individualChance
@@ -304,12 +312,13 @@ class LootItemDrop {
           count[0] = Math.min(count[0], func.limit)
           count[1] = Math.min(count[1], func.limit)
         } else {
-          count[0] = Math.min(count[0], func.limit.min)
-          count[1] = Math.min(count[1], func.limit.max)
+          // a min clamps from below, a max from above (mushroom blocks: uniform -6..2 then min 0)
+          if (typeof func.limit.min === 'number') { count[0] = Math.max(count[0], func.limit.min); count[1] = Math.max(count[1], func.limit.min) }
+          if (typeof func.limit.max === 'number') { count[0] = Math.min(count[0], func.limit.max); count[1] = Math.min(count[1], func.limit.max) }
         }
       }
 
-      if (func.type === 'minecraft:looting_enchant') {
+      if (func.type === 'minecraft:looting_enchant' || func.type === 'minecraft:enchanted_count_increase') {
         if (typeof func.count === 'number') {
           count[0] += func.count * looting
           count[1] += func.count * looting
@@ -334,6 +343,12 @@ class LootItemDrop {
         } else if (func.binomial) {
           count[0] = 0
           count[1] = func.binomial.n
+        } else if (func.count && typeof func.count === 'object') { // number provider, 1.17+
+          const c = func.count
+          if (c.type === 'minecraft:binomial') { count[0] = 0; count[1] = typeof c.n === 'number' ? c.n : count[1] } else if (c.value !== undefined) { count[0] = c.value; count[1] = c.value } else {
+            if (typeof c.min === 'number') count[0] = c.min
+            if (typeof c.max === 'number') count[1] = c.max
+          }
         }
       }
     }
@@ -350,10 +365,12 @@ class LootCondition {
 
   isSilkTouch () {
     if (this.type !== 'minecraft:match_tool') return false
-    if (!this.predicate || !this.predicate.enchantments) return false
-
-    for (const enchantment of this.predicate.enchantments) {
-      if (enchantment.enchantment === 'minecraft:silk_touch') return true
+    if (!this.predicate) return false
+    // 1.13 .. 1.20.6: predicate.enchantments[].enchantment; 1.21+: predicate.predicates['minecraft:enchantments'][].enchantments
+    const list = this.predicate.enchantments || (this.predicate.predicates && this.predicate.predicates['minecraft:enchantments']) || []
+    for (const e of list) {
+      const names = [].concat(e.enchantment ?? e.enchantments ?? [])
+      if (names.includes('minecraft:silk_touch')) return true
     }
 
     return false
