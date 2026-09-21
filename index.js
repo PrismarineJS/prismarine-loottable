@@ -334,24 +334,39 @@ class LootItemDrop {
       }
 
       if (func.type === 'minecraft:set_count') {
+        // Resolve the function's own count range [lo, hi] independent of the running total.
+        let lo, hi
         if (typeof func.count === 'number') {
-          count[0] = func.count
-          count[1] = func.count
+          lo = hi = func.count
         } else if (func.uniform) {
-          count[0] = func.uniform.min
-          count[1] = func.uniform.max
+          lo = func.uniform.min; hi = func.uniform.max
         } else if (func.binomial) {
-          count[0] = 0
-          count[1] = func.binomial.n
+          lo = 0; hi = func.binomial.n
         } else if (func.count && typeof func.count === 'object') { // number provider, 1.17+
           const c = func.count
-          if (c.type === 'minecraft:binomial') { count[0] = 0; count[1] = typeof c.n === 'number' ? c.n : count[1] } else if (c.value !== undefined) { count[0] = c.value; count[1] = c.value } else {
-            if (typeof c.min === 'number') count[0] = c.min
-            if (typeof c.max === 'number') count[1] = c.max
+          if (c.type === 'minecraft:binomial') { lo = 0; hi = typeof c.n === 'number' ? c.n : count[1] } else if (c.value !== undefined) { lo = hi = c.value } else {
+            lo = typeof c.min === 'number' ? c.min : count[0]
+            hi = typeof c.max === 'number' ? c.max : count[1]
+          }
+        }
+        if (lo !== undefined) {
+          if (func.add) {
+            // Additive set_count (e.g. resin_clump adds one per attached face). A conditional add is optional, so it
+            // only raises the max; an unconditional add moves both bounds. Treating it as a replacement (the previous
+            // behavior) produced nonsense like [-1, -1] for the trailing unconditional -1.
+            const conditional = Array.isArray(func.conditions) && func.conditions.length > 0
+            count[1] += hi
+            if (!conditional) count[0] += lo
+          } else {
+            count[0] = lo; count[1] = hi
           }
         }
       }
     }
+
+    // A stack count can never be negative (an unconditional additive -1 can push the low bound below zero).
+    if (count[0] < 0) count[0] = 0
+    if (count[1] < 0) count[1] = 0
 
     return count
   }

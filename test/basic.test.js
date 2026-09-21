@@ -16,6 +16,17 @@ describe('loot table formats', () => {
     assert.deepStrictEqual(constant.range, [3, 3])
   })
 
+  it('handles additive set_count (resin_clump: +1 per face, then an unconditional -1)', () => {
+    const faces = ['down', 'up', 'north', 'south', 'west', 'east']
+    const functions = faces.map(f => ({ function: 'minecraft:set_count', add: true, count: 1, conditions: [{ condition: 'minecraft:block_state_property', block: 'minecraft:resin_clump', properties: { [f]: 'true' } }] }))
+    functions.push({ function: 'minecraft:set_count', add: true, count: -1 }) // unconditional
+    functions.push({ function: 'minecraft:explosion_decay' })
+    const [clump] = drops({ pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:resin_clump', functions }] }] })
+    // base 1 + up to 6 conditional adds - 1 unconditional = 0..6 (a one-face state yields 1, six faces yield 6);
+    // the old replacement behavior produced [-1, -1] from the trailing unconditional -1.
+    assert.deepStrictEqual(clump.range, [0, 6])
+  })
+
   it('accepts any_of / all_of conditions and unknown condition or function types (1.20.3+)', () => {
     const table = { pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:short_grass', conditions: [{ condition: 'minecraft:any_of', terms: [{ condition: 'minecraft:survives_explosion' }, { condition: 'minecraft:enchantment_active_check', active: true }] }], functions: [{ function: 'minecraft:set_components', components: {} }] }] }] }
     assert.strictEqual(drops(table)[0].item, 'minecraft:short_grass')
