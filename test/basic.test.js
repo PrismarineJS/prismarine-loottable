@@ -27,6 +27,26 @@ describe('loot table formats', () => {
     assert.deepStrictEqual(clump.range, [0, 6])
   })
 
+  it('handles a negative conditional additive set_count (spans both outcomes)', () => {
+    const functions = [
+      { function: 'minecraft:set_count', count: 3 },
+      { function: 'minecraft:set_count', add: true, count: -1, conditions: [{ condition: 'minecraft:random_chance', chance: 0.5 }] }
+    ]
+    const [d] = drops({ pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:stick', functions }] }] })
+    // base 3, then an optional -1: the possible counts are 2 and 3, so the range is [2, 3], not the inverted [3, 2].
+    assert.deepStrictEqual(d.range, [2, 3])
+  })
+
+  it('handles a conditional additive number provider that crosses zero', () => {
+    const functions = [
+      { function: 'minecraft:set_count', count: 5 },
+      { function: 'minecraft:set_count', add: true, count: { type: 'minecraft:uniform', min: -2, max: 3 }, conditions: [{ condition: 'minecraft:random_chance', chance: 0.5 }] }
+    ]
+    const [d] = drops({ pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:stick', functions }] }] })
+    // base 5, optional add of [-2, 3]: low extends by min(0,-2) -> 3, high by max(0,3) -> 8.
+    assert.deepStrictEqual(d.range, [3, 8])
+  })
+
   it('accepts any_of / all_of conditions and unknown condition or function types (1.20.3+)', () => {
     const table = { pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:short_grass', conditions: [{ condition: 'minecraft:any_of', terms: [{ condition: 'minecraft:survives_explosion' }, { condition: 'minecraft:enchantment_active_check', active: true }] }], functions: [{ function: 'minecraft:set_components', components: {} }] }] }] }
     assert.strictEqual(drops(table)[0].item, 'minecraft:short_grass')

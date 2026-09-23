@@ -351,12 +351,18 @@ class LootItemDrop {
         }
         if (lo !== undefined) {
           if (func.add) {
-            // Additive set_count (e.g. resin_clump adds one per attached face). A conditional add is optional, so it
-            // only raises the max; an unconditional add moves both bounds. Treating it as a replacement (the previous
-            // behavior) produced nonsense like [-1, -1] for the trailing unconditional -1.
+            // Additive set_count (e.g. resin_clump adds one per attached face). A conditional add is optional: it may or
+            // may not apply, so the range must span both outcomes - extend the low bound by min(0, lo) and the high bound
+            // by max(0, hi). This keeps a positive add raising only the max (the multiface case) while a negative add
+            // (e.g. a trailing -1) lowers the min instead of inverting the range. An unconditional add moves both bounds.
             const conditional = Array.isArray(func.conditions) && func.conditions.length > 0
-            count[1] += hi
-            if (!conditional) count[0] += lo
+            if (conditional) {
+              count[0] += Math.min(0, lo)
+              count[1] += Math.max(0, hi)
+            } else {
+              count[0] += lo
+              count[1] += hi
+            }
           } else {
             count[0] = lo; count[1] = hi
           }
