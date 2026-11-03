@@ -79,6 +79,95 @@ function parseCondition (condition, onPool) {
   return lootCondition
 }
 
+// 26.3 rewrote the loot table JSON: a pool or entry carries one `condition` (object, list or a string naming a
+// predicate file) instead of `conditions: [{condition}]`, and `modifier` (object or list, each with `type`) instead
+// of `functions: [{function}]`; block_state_property became match_block {blocks, state}. Everything below reads the
+// pre-26.3 shape, so a table is normalized to it first. String references are resolved through `predicates`
+// (name -> predicate JSON, e.g. read from data/minecraft/predicate/) and fall back to the vanilla 26.3 ones here.
+const BUILTIN_PREDICATES = {
+  'minecraft:tool/can_silk_touch': { type: 'minecraft:match_tool', predicate: { predicates: { 'minecraft:enchantments': [{ enchantments: 'minecraft:silk_touch', levels: { min: 1 } }] } } },
+  'minecraft:tool/can_shear': { type: 'minecraft:match_tool', predicate: { items: 'minecraft:shears' } }
+}
+
+function asList (value) {
+  if (value === undefined || value === null) return []
+  return Array.isArray(value) ? value : [value]
+}
+
+function normalizeCondition (condition, predicates) {
+  if (typeof condition === 'string') {
+    const ref = predicates[condition] ?? BUILTIN_PREDICATES[condition]
+    if (!ref) return { condition: 'minecraft:reference', name: condition }
+    return normalizeCondition(ref, predicates)
+  }
+  if (condition.condition !== undefined) return condition // pre-26.3 shape
+  const out = { ...condition, condition: condition.type }
+  delete out.type
+  if (out.terms) out.terms = out.terms.map(t => normalizeCondition(t, predicates))
+  if (out.term) out.term = normalizeCondition(out.term, predicates)
+  if (out.condition === 'minecraft:match_block') {
+    out.condition = 'minecraft:block_state_property'
+    out.block = out.blocks
+    out.properties = out.state
+    delete out.blocks
+    delete out.state
+  }
+  return out
+}
+
+function normalizeFunction (func, predicates) {
+  if (func.function !== undefined) return func // pre-26.3 shape
+  const out = { ...func, function: func.type }
+  delete out.type
+  if (out.condition !== undefined) {
+    out.conditions = asList(out.condition).map(c => normalizeCondition(c, predicates))
+    delete out.condition
+  }
+  return out
+}
+
+// An all_of is an AND of its terms, which is what a conditions list already means; flattening it lets the
+// drop-level questions (random chance, player kill, block age) see the terms 26.3 wraps in it.
+function flattenAllOf (conditions) {
+  const out = []
+  for (const c of conditions) {
+    if (c.condition === 'minecraft:all_of' && Array.isArray(c.terms)) out.push(...flattenAllOf(c.terms))
+    else out.push(c)
+  }
+  return out
+}
+
+function normalizeHolder (holder, predicates) {
+  const out = { ...holder }
+  if (holder.condition !== undefined) {
+    out.conditions = flattenAllOf(asList(holder.condition).map(c => normalizeCondition(c, predicates)))
+    delete out.condition
+  }
+  if (holder.modifier !== undefined) {
+    out.functions = asList(holder.modifier).map(f => normalizeFunction(f, predicates))
+    delete out.modifier
+  }
+  return out
+}
+
+function normalizeEntry (entry, predicates) {
+  const out = normalizeHolder(entry, predicates)
+  if (entry.children) out.children = entry.children.map(e => normalizeEntry(e, predicates))
+  return out
+}
+
+function normalizeTable (lootTable, predicates) {
+  if (!lootTable || !lootTable.pools) return lootTable
+  return {
+    ...lootTable,
+    pools: lootTable.pools.map(pool => {
+      const out = normalizeHolder(pool, predicates)
+      out.entries = (pool.entries || []).map(e => normalizeEntry(e, predicates))
+      return out
+    })
+  }
+}
+
 function handleItemEntry (drops, entry, pool, poolIndex, entryType) {
   const item = new LootItemDrop(entry.name, entryType)
 
@@ -163,8 +252,9 @@ function handleEntry (drops, entry, pool, poolIndex, parentEntryType) {
  *
  * @return A list of all potential item drops and the conditions required.
  */
-function getPotentialDrops (lootTable, mcVersion) {
+function getPotentialDrops (lootTable, mcVersion, options = {}) {
   const drops = []
+  lootTable = normalizeTable(lootTable, options.predicates || {})
 
   let poolIndex = -1
   for (const pool of lootTable.pools || []) {
