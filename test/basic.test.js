@@ -66,3 +66,29 @@ describe('loot table formats', () => {
     assert.deepStrictEqual(d.range, [0, 2])
   })
 })
+
+describe('26.3 loot table format', () => {
+  it('reads typed condition/modifier, match_block and named predicates', () => {
+    const [slab] = drops({ pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:acacia_slab', modifier: [{ type: 'minecraft:set_count', condition: { type: 'minecraft:match_block', blocks: 'minecraft:acacia_slab', state: { type: 'double' } }, count: 2 }, { type: 'minecraft:explosion_decay' }] }] }] })
+    assert.deepStrictEqual(slab.range, [2, 2])
+
+    const cluster = drops({ pools: [{ rolls: 1, entries: [{ type: 'minecraft:alternatives', children: [{ type: 'minecraft:item', condition: 'minecraft:tool/can_silk_touch', name: 'minecraft:amethyst_cluster' }, { type: 'minecraft:item', modifier: { type: 'minecraft:set_count', count: 2 }, name: 'minecraft:amethyst_shard' }] }] }] })
+    assert.deepStrictEqual(cluster.map(d => [d.item, d.silk, d.noSilk]), [['minecraft:amethyst_cluster', true, false], ['minecraft:amethyst_shard', false, true]])
+
+    const [, boneMeal] = drops({ pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:cod' }] }, { condition: { type: 'minecraft:random_chance', chance: 0.05 }, rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:bone_meal' }] }] })
+    assert.strictEqual(boneMeal.chance, 0.05)
+
+    const [rod] = drops({ pools: [{ condition: { type: 'minecraft:killed_by_player' }, rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:blaze_rod', modifier: { type: 'minecraft:set_count', count: { type: 'minecraft:uniform', min: 0, max: 1 } } }] }] })
+    assert.deepStrictEqual([rod.range, rod.player], [[0, 1], true])
+
+    // all_of wraps what used to be separate conditions (drowned: killed_by_player + random chance)
+    const [ingot] = drops({ pools: [{ condition: { type: 'minecraft:all_of', terms: [{ type: 'minecraft:killed_by_player' }, { type: 'minecraft:random_chance_with_enchanted_bonus', enchantment: 'minecraft:looting', unenchanted_chance: 0.11, enchanted_chance: { type: 'minecraft:linear', base: 0.13, per_level_above_first: 0.02 } }] }, rolls: 1, entries: [{ type: 'minecraft:item', name: 'minecraft:copper_ingot' }] }] })
+    assert.deepStrictEqual([ingot.chance, ingot.player], [0.11, true])
+  })
+
+  it('resolves a predicate reference passed in through options', () => {
+    const predicates = { 'minecraft:tool/can_shear': { type: 'minecraft:match_tool', predicate: { items: 'minecraft:shears' } } }
+    const [leaf] = getPotentialDrops({ pools: [{ rolls: 1, entries: [{ type: 'minecraft:item', condition: 'minecraft:tool/can_shear', name: 'minecraft:oak_leaves' }] }] }, undefined, { predicates })
+    assert.strictEqual(leaf.conditions[0].type, 'minecraft:match_tool')
+  })
+})
